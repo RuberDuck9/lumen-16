@@ -6,16 +6,20 @@
 
 Format 1: Literal   
 | 00 | 00000000000000 |
+
+Format 2: Single Register
+| 01 | 00000000000 | XXX |
        
-Format 2: Register    
-| 01 | 0000000 | XXX | Z | YYY |
+Format 3: Double Register    
+| 10 | 0000000 | XXX | Z | YYY |
 
 Bit Z is a specifier for whether to use a register's value, or its corresponding memory address      
 Z = 0: register value         
 Z = 1: memory address         
 
-Format 3: Immediate    
-| 10 | 00 | 000000000000 |        
+Format 4: Immediate    
+| 11 | 00 | IIIIIIIIIIIIII |      
+I = immediate value
 
 ### Opcodes
 
@@ -30,15 +34,29 @@ Format 3: Immediate
 | INC, FX | Literal | 00 - 00000000000110 | Perform FX + 1 |
 | INC, GX | Literal | 00 - 00000000000111 | Perform GX + 1 |
 | INC, HX | Literal | 00 - 00000000001000 | Perform HX + 1 |
-| MOV | Register | 01 - 0000000 - XXX - Z - YYY | perform Y = X |
-| ADD | Register | 01 - 0000001 - XXX - Z - YYY | perform X + Y | 
-| ADC | Register | 01 - 0000010 - XXX - Z - YYY | perform with carry X + Y | 
-| SUB | Register | 01 - 0000011 - XXX - Z - YYY | perform X - Y |
-| SBB | Register | 01 - 0000100 - XXX - Z - YYY | perform with borrow X - Y | 
-| ORR | Register | 01 - 0000101 - XXX - Z - YYY | perform X ∨ Y |
-| AND | Register | 01 - 0000110 - XXX - Z - YYY | perform X ∧ Y | 
-| XOR | Register | 01 - 0000111 - XXX - Z - YYY | perform X ⊕ Y |
-| CMP | Register | 01 - 0001000 - XXX - Z - YYY | compare X to Y, set flags |
+| DEC, AX | Literal | 00 - 00000000001001 | Perform AX - 1 | 
+| DEC, BX | Literal | 00 - 00000000001010 | Perform BX - 1 |
+| DEC, CX | Literal | 00 - 00000000001011 | Perform CX - 1 |
+| DEC, DX | Literal | 00 - 00000000001100 | Perform DX - 1 |
+| DEC, EX | Literal | 00 - 00000000001101 | Perform EX - 1 |
+| DEC, FX | Literal | 00 - 00000000001110 | Perform FX - 1 |
+| DEC, GX | Literal | 00 - 00000000001111 | Perform GX - 1 |
+| DEC, HX | Literal | 00 - 00000000010000 | Perform HX - 1 |
+| HLT | Literal | 00 - 11111111111111 | Halt System Clock |
+| PSH | Single Register | 01 | 00000000000 | XXX | Push X |
+| POP | Single Register | 01 | 00000000001 | XXX | Pop, store to X |
+| NOT | Single Register | 01 | 00000000010 | XXX | Perform ¬ X |
+| MOV | Double Register | 10 - 0000000 - XXX - Z - YYY | Perform Y = X |
+| ADD | Double Register | 10 - 0000001 - XXX - Z - YYY | Perform X + Y | 
+| ADC | Double Register | 01 - 0000010 - XXX - Z - YYY | Perform with carry X + Y | 
+| SUB | Double Register | 01 - 0000011 - XXX - Z - YYY | Perform X - Y |
+| SBB | Double Register | 01 - 0000100 - XXX - Z - YYY | Perform with borrow X - Y | 
+| ORR | Double Register | 01 - 0000101 - XXX - Z - YYY | Perform X ∨ Y |
+| AND | Double Register | 01 - 0000110 - XXX - Z - YYY | Perform X ∧ Y | 
+| XOR | Double Register | 01 - 0000111 - XXX - Z - YYY | Perform X ⊕ Y |
+| CMP | Double Register | 01 - 0001000 - XXX - Z - YYY | Compare X to Y, set flags |
+| JMP | Immediate | 10 - 00 - IIIIIIIIIIIIII | Perform PC = I |
+| CAL | Immediate | 10 - 01 - IIIIIIIIIIIIII | Push PC to stack, Perform PC = I |
 
 
 ## Registers:
