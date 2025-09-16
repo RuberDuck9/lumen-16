@@ -3,22 +3,22 @@
 ## Instructions 
 
 ### Format
+ 
+Format 1: Literal      
+| 00 - 00000000000000 |   
 
-Format 1: Literal   
-| 00 | 00000000000000 |
-
-Format 2: Single Register
-| 01 | 00000000000 | XXX |
+Format 2: Single Register    
+| 01 - 00000000000 - XXX |   
        
-Format 3: Double Register    
-| 10 | 0000000 | XXX | Z | YYY |
+Format 3: Double Register      
+| 10 - 0000000 - XXX - Z - YYY |   
 
 Bit Z is a specifier for whether to use a register's value, or its corresponding memory address      
 Z = 0: register value         
 Z = 1: memory address         
 
 Format 4: Immediate    
-| 11 | 00 | IIIIIIIIIIIIII |      
+| 11 - 00 - IIIIIIIIIIIIII |      
 I = immediate value
 
 ### Opcodes
@@ -50,12 +50,18 @@ I = immediate value
 | CZF | Literal | 00 - 00000000010110 | ZF = 0 |
 | CCF | Literal | 00 - 00000000010111 | CF = 0 |
 | CIF | Literal | 00 - 00000000011000 | IF = 0 | 
-| HLT | Literal | 00 - 11111111111111 | Halt system clock |
+| *INN | Literal | 00 - 00000000011001 | *IX = OX |
+| *OUT | Literal | 00 - 00000000011010 | *OX = IX |
+| *RET | Literal | 00 - 00000000011011 | IF = 1, Mode = 0, Pop, store to PC | 
+| *HLT | Literal | 00 - 11111111111111 | Halt system clock |
 | PSH | Single Register | 01 - 00000000000 - XXX | Push X |
 | POP | Single Register | 01 - 00000000001 - XXX | Pop, store to X |
 | NOT | Single Register | 01 - 00000000010 - XXX | ¬ X |
 | JPR | Single Register | 01 - 00000000011 - XXX | PC = *X |
 | CLR | Single Register | 01 - 00000000100 - XXX | Push PC to, PC = *X |
+| *SMB | Single Register | 01 - 00000000101 - XXX | MBR = X | 
+| *SML | Single Register | 01 - 00000000110 - XXX | MLR = X | 
+| *STQ | Single Register | 01 - 00000000111 - XXX | TQR = X | 
 | MOV | Double Register | 10 - 0000000 - XXX - Z - YYY | Y = X |
 | ADD | Double Register | 10 - 0000001 - XXX - Z - YYY | X + Y | 
 | ADC | Double Register | 01 - 0000010 - XXX - Z - YYY | X + Y with carry | 
@@ -67,8 +73,11 @@ I = immediate value
 | CMP | Double Register | 01 - 0001000 - XXX - Z - YYY | Compare X to Y, set flags |
 | JCR | Double Register | 01 - 0001001 - FFF - Z - XXX | If F, jump to *X |
 | CLC | Double Register | 01 - 0001001 - FFF - Z - XXX | If F, push PC, PC = X |
-| JMP | Immediate | 10 - 00 - IIIIIIIIIIIIII | PC = I |
-| CAL | Immediate | 10 - 01 - IIIIIIIIIIIIII | Push PC, PC = I |
+| JMP | Immediate | 11 - 00 - IIIIIIIIIIIIII | PC = I |
+| CAL | Immediate | 11 - 01 - IIIIIIIIIIIIII | Push PC, PC = I |
+| INT | Immediate | 11 - 10 - IIIIIIIIIIIIII | IF = 0, Mode = 1, Push PC, PC = *I -> IVT | 
+
+"*" = Privledged Instruction
 
 
 ## Registers:
@@ -78,11 +87,11 @@ I = immediate value
 - AX - 000 - alu accumulator
 - BX - 001 - immediate
 - CX - 010 
-- DX - 011 
+- DX - 011
 - EX - 100
 - FX - 101
-- GX - 110 
-- HX - 111
+- IX - 110 - io in
+- OX - 111 - io out
 
 ### Special:
 
@@ -90,10 +99,11 @@ I = immediate value
 - Program Counter - address of next instruction to be fetched
 - Memory Address Register - holds the address of the memory location being accessed
 - Memory Data Register - holds the data about to be written to memory
+- Memory Base Register - the first memory address that an unprivledged process access is permited to 
+- Memory Limit Register - the last memory address that an unprivledged process access is permited to
+- Time Quantum Register - how many clocks until an interrupt will be triggered
 - Stack Pointer
 - Stack Base
-- Memory Base Register - the first memory address the running process is allowed to access
-- Memory Limit Register - how many memory address the process is allocated
 - Mode (1)
 - Flags
     - 000 - Sign Flag
