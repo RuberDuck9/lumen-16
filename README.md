@@ -1,4 +1,9 @@
-16 Bit ISA 
+The goal of this isa is to be simple, but also powerful. Beyond simply being turing complete it also seeks to support: 
+- Pre-emptive scheduling
+- Hardware level memory protection
+- Multiple operation modes (Ring 0, Ring 3)
+- Hardware and software level interrupts
+- Persistant bios
 
 ## Instructions 
 
