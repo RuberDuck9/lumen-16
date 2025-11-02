@@ -1,3 +1,5 @@
+**Note: This project is currently in active development and is not feature complete**
+
 This project is a continuation of [my former design](https://github.com/RuberDuck9/ryft-16), which I felt the need to rewrite after feature creep got to be too much. The goal of this isa is to be simple, but also powerful. Beyond simply being turing complete it also seeks to support: 
 - Pre-emptive scheduling
 - Hardware level memory protection
