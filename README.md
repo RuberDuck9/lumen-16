@@ -60,7 +60,7 @@ I = immediate value
 | *STQ | Single Register | 01 - 00000000111 - XXX | TQR = X | 
 | *SSB | Single Register | 01 - 00000001000 - XXX | SBR = X | 
 | INC | Single Registrer | 01 - 00000001001 - XXX | X + 1 |
-| DEC | Single Registrer | 01 - 00000001010 - XXX | X + 1 |
+| DEC | Single Registrer | 01 - 00000001010 - XXX | X - 1 |
 | MOV | Double Register | 10 - 0000000 - Z- XXX - YYY | Y = X |
 | STR | Double Register | 10 - 0000001 - XXX - Z - YYY | Y = X |
 | ADD | Double Register | 10 - 0000010 - XXX - Z - YYY | X + Y | 
