@@ -13,17 +13,13 @@ This project is a continuation of [my former design](https://github.com/RuberDuc
 The instruction word size is two bytes. There are four different formats of instructions depending on the type of operation they perform.
  
 Format 1: Literal      
-| 00 - 00000000000000 |   
+| 00 - 00000000 - UUUUUU |   
 
 Format 2: Single Register    
-| 01 - 00000000000 - XXX |   
+| 01 - 00000000 - UUU - XXX |   
        
 Format 3: Double Register      
-| 10 - 0000000 - XXX - Z - YYY |   
-
-Bit Z is a specifier for whether to use a register's value, or its corresponding memory address      
-Z = 0: register value         
-Z = 1: memory address         
+| 10 - 00000000 - XXX - YYY |        
 
 Format 4: Immediate    
 | 11 - 00 - IIIIIIIIIIIIII |      
