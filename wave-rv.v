@@ -1,19 +1,35 @@
-// this is currently not in an executable state, I am just writing pseudo code right now and will try to better organize it later
+// this is currently not in an executable state, I am just writing pseudo code right now and will try to better organize things later
+
+module memory (
+	input clk,
+	input store,
+	input [31:0] memory_access_address,
+	input [31:0] memory_write_data,
+	output [31:0] memory_read_data
+);
+
+	reg [31:0] memory_block [0:255];
+
+	always @(posedge clk) begin
+		if (store) begin
+			memory_block[memory_access_address] <= memory_write_data;
+		end
+		memory_read_data <= memory_block[memory_access_address];
+	end
+
+endmodule
 
 module waverv (
-
 	input clk,
 	input reset,
-	
 	input memory_read_busy,
 	input memory_write_busy,
 	input [31:0] memory_read_data,
-
 	output load,
 	output store,
 	output [31:0] memory_access_address,
 	output [31:0] memory_write_data,
-	output [3:0] memory_write_mask,
+	output [3:0] memory_write_mask
 
 	);
 
@@ -43,11 +59,11 @@ module waverv (
 	wire [6:0] funct7                     = instruction_register[31:25];
 
 	// Immediate Value
-	wire [31:0] Uimm                      = {    instruction_register[31],  instruction_register[30:12], {12{1'b0}}};                                                  // zero extend bits 11-0
-	wire [31:0] Iimm                      = {{21{instruction_register[31]}, instruction_register[30:20]};                                                              // sign extend bits 32-11
-	wire [31:0] Simm                      = {{21{instruction_register[31]}, instruction_register[30:25], instruction_register[11:7]};                                  // sign extend bits 31-11 
-	wire [31:0] Bimm                      = {{20{instruction_register[31]}, instruction_register[7], instruction_register[30:25], instruction_register[11:8], 1'b0};   // sign extend bits 31-12, bit 0 = 0 
-	wire [31:0] Jimm                      = {{12{instruction_reigster[31]}, instruction_register[19:12], instruction_register[20], instruction_register[30:21], 1'b0}; // sign extend bits 31-20, bit 0 = 0
+	wire [31:0] Uimm                      = {    instruction_register[31],  instruction_register[30:12], {12{1'b0}}};                                                   // zero extend bits 11-0
+	wire [31:0] Iimm                      = {{21{instruction_register[31]}}, instruction_register[30:20]};                                                              // sign extend bits 32-11
+	wire [31:0] Simm                      = {{21{instruction_register[31]}}, instruction_register[30:25], instruction_register[11:7]};                                  // sign extend bits 31-11 
+	wire [31:0] Bimm                      = {{20{instruction_register[31]}}, instruction_register[7], instruction_register[30:25], instruction_register[11:8], 1'b0};   // sign extend bits 31-12, bit 0 = 0 
+	wire [31:0] Jimm                      = {{12{instruction_reigster[31]}}, instruction_register[19:12], instruction_register[20], instruction_register[30:21], 1'b0}; // sign extend bits 31-20, bit 0 = 0
 
 	// ********************************************
 	// Program Counter
@@ -119,7 +135,7 @@ module waverv (
 			end
 			2'b01: begin // execute
 				program_counter = next_pc;
-				2'b00;
+				state <= 2'b00;
 			end
 		endcase
 	end
@@ -161,10 +177,10 @@ module waverv (
 
 	always @(*) begin
 		case(funct3)
-			3'b000: alu_out = (funct7[5] & instruction_register[5]) & (alu_in_1 - alu_in_2) : (alu_in_1 + alu_in_2); // if bit 5 of funct7 and the instruction register are high it must be a reg-reg operation, otherwise it must be a reg-imm operation (and also and add)
+			3'b000: alu_out = (funct7[5] & instruction_register[5]) ? (alu_in_1 - alu_in_2) : (alu_in_1 + alu_in_2); // if bit 5 of funct7 and the instruction register are high it must be a reg-reg operation, otherwise it must be a reg-imm operation (and also and add)
 			3'b001: alu_out = alu_in_1 << shamt; // register-shift left
-			3'b010: alu_out = ($signed(alu_in_1) < $signed(alu_in_2)) // set less than
-			3'b011: alu_out = (alu_in_1) < alu_in_2); // set less than unsigned
+			3'b010: alu_out = ($signed(alu_in_1) < $signed(alu_in_2)); // set less than
+			3'b011: alu_out = (alu_in_1 < alu_in_2); // set less than unsigned
 			3'b100: alu_out = (alu_in_1 ^ alu_in_2); // xor
 			3'b101: alu_out = funct[7] ? ($signed(alu_in_1) >>> shamt) : (alu_in_1 >> shamt); // register-shift right logical or arthimetic depdning on funct7 bit 5
 			3'b110: alu_out = (alu_in_1 | alu_in_2); // or
