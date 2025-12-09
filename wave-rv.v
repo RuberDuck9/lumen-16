@@ -151,53 +151,6 @@ assign write_back_enable = ((state == 2'b01) &&
 		add_upper_immediate_pc_operation
 	));
 
-always @(posedge clk) begin
-	next_pc = (branch_operation && take_branch) ? program_counter + Bimm:
-		jump_and_link_register_operation                ? program_counter + Jimm :
-		jump_and_link_immediate_operation               ? rs1 + Iimm :
-		program_counter + 4;
-end
-
-wire [31:0] pc_plus_4 = program_counter + 4;
-wire [31:0] pc_plus_immediate = program_counter + ( 
-jump_and_link_pc_operation ? Jimm :
-add_upper_immediate_pc_operation ? Uimm : 
-Bimm );
-
-wire [31:0] load_store_address = rs1 + (
-store_operation ? Simm :
-Iimm );
-
-wire [15:0] load_halfword = load_store_address[1] ? memory_read_data[31:16] : memory_read_data[15:0];
-
-wire [7:0] load_byte = load_store_address[0] ? load_halfword[15:8] : load_halfword[7:0];
-
-wire memory_byte_access = funct3[1:0] == 2'b00;
-wire memory_halfword_access = funct3[1:0] == 2'b01;
-
-wire load_sign = !funct3[2] & (memory_byte_access ? load_byte[7] : load_halfword[15]);
-
-wire [31:0] load_data = 
-	memory_byte_access ? {{24{load_sign}}, load_byte} :
-	memory_halfword_access ? {{16{load_sign}}, load_halfword} :
-	memory_read_data;
-
-assign memory_access_address = (state[wait_instruction_bit] | state[fetch_instruction_bit]) ? program_counter : load_store_address; 
-
-assign memory_write_data[ 7: 0] = rs2[7:0];
-assign memory_write_data[15: 8] = load_store_address[0] ? rs2[7:0] : rs2[15:8];
-assign memory_write_data[23:16] = load_store_address[1] ? rs2[7:0] : rs2[23:16];
-assign memory_write_data[31:24] = load_store_address[0] ? rs2[7:0] : load_store_address[1] ? rs2[15:8] : rs2[31:24];
-
-wire [3:0] write_mask = 
-	memory_byte_access ? 
-		(load_store_address[1] ? (load_store_address[0] ? 4'b1000 : 4'b0100) :
-			(load_store_address[0] ? 4'b0010 : 4'b0001)
-		) :
-	memory_halfword_access ?
-		(load_store_address[1] ? 4'b1100 : 4'b0011) :
-		4'b1111;
-
 endmodule
 
 module next_pc(
@@ -215,11 +168,8 @@ endmodule
 
 module immediate_generator(
 	input wire [31:0] instruction_register,
-	output wire [31:0] Uimm,
-	output wire [31:0] Iimm,
-	output wire [31:0] Simm,
-	output wire [31:0] Bimm,
-	output wire [31:0] Jimm
+	input wire [31:0] 
+	output wire [31:0] imm_out
 );
 
 assign Uimm = {    instruction_register[31],   instruction_register[30:12], {12{1'b0}}};                                                   // zero extend bits 11-0
