@@ -1,14 +1,14 @@
 // **************************************************
-// Memory
+// Memory (24 bit block)
 // **************************************************
 
-module instructio_memory (
+module instruction_memory (
 	input clk,
 	input [31:0] program_counter,
 	output reg [31:0] instruction_memory_read_data
 );
 
-reg [31:0] memory_block [0:255];
+reg [31:0] memory_block [0:16777215];
 
 always @(posedge clk) begin
 	instruction_memory_read_data <= memory_block[program_counter];
@@ -24,7 +24,7 @@ module data_memory (
 	output reg [31:0] data_memory_read_data
 );
 
-reg [31:0] memory_block [0:255];
+reg [31:0] memory_block [0:16777215];
 
 always @(posedge clk) begin
 	if (store) begin
@@ -40,9 +40,9 @@ endmodule
 // **************************************************
 
 module program_counter(
-	input clk,
-	input next_pc,
+	input wire clk,
 	input wire execute,
+	input wire[31:0] next_pc,
 	output reg [31:0] program_counter
 );
 
@@ -73,12 +73,15 @@ module control_unit(
 	input clk,
 	input wire [31:0] program_counter,
 	input wire [31:0] instruction_register,
+	input wire [31:0] rs1,
+	input wire [31:0] rs2,
 	output wire [4:0] rd_address,
 	output wire [4:0] rs1_address,
 	output wire [4:0] rs2_address,
 	output wire [2:0] funct3,
 	output wire [6:0] funct7,
 	output wire write_back_enable,
+	output wire register_write,
 	output reg fetch,
 	output reg execute,
 	output reg take_branch,
@@ -99,9 +102,9 @@ wire store_operation                  = (instruction_register[6:2] == 5'b01000);
 wire system_operation                 = (instruction_register[6:2] == 5'b11100); // witchcraft
 
 // Register
-wire rd_address                 = instruction_register[11:7];  // destination register
-wire rs1_address                = instruction_register[19:15]; // operand register 1
-wire rs2_address                = instruction_register[24:20]; // operand register 2
+assign rd_address                 = instruction_register[11:7];  // destination register
+assign rs1_address                = instruction_register[19:15]; // operand register 1
+assign rs2_address                = instruction_register[24:20]; // operand register 2
 
 // Function
 assign funct3                     = instruction_register[14:12];
@@ -139,19 +142,6 @@ always @(*) begin
 	endcase
 end
 
-always @(posedge clk) begin
-	if(reg_write_enable && (rd_address != 0)) begin
-		register_file[rd_address] <= reg_write_data;
-	end
-end
-
-always @(posedge clk) begin
-	write_back_data = (jump_and_link_pc_operation || jump_and_link_register_operation) ? (program_counter + 4) : 
-		(load_upper_immediate_operation) ? Uimm :
-		(add_upper_immediate_pc_operation) ? (program_counter + Uimm) : 
-		alu_out;
-end
-
 assign write_back_enable = ((state == 2'b01) && 
 	(alu_register_operation              || 
 		alu_immediate_operation          || 
@@ -166,6 +156,59 @@ always @(posedge clk) begin
 		jump_and_link_register_operation                ? program_counter + Jimm :
 		jump_and_link_immediate_operation               ? rs1 + Iimm :
 		program_counter + 4;
+end
+
+wire [31:0] pc_plus_4 = program_counter + 4;
+wire [31:0] pc_plus_immediate = program_counter + ( 
+jump_and_link_pc_operation ? Jimm :
+add_upper_immediate_pc_operation ? Uimm : 
+Bimm );
+
+wire [31:0] load_store_address = rs1 + (
+store_operation ? Simm :
+Iimm );
+
+wire [15:0] load_halfword = load_store_address[1] ? memory_read_data[31:16] : memory_read_data[15:0];
+
+wire [7:0] load_byte = load_store_address[0] ? load_halfword[15:8] : load_halfword[7:0];
+
+wire memory_byte_access = funct3[1:0] == 2'b00;
+wire memory_halfword_access = funct3[1:0] == 2'b01;
+
+wire load_sign = !funct3[2] & (memory_byte_access ? load_byte[7] : load_halfword[15]);
+
+wire [31:0] load_data = 
+	memory_byte_access ? {{24{load_sign}}, load_byte} :
+	memory_halfword_access ? {{16{load_sign}}, load_halfword} :
+	memory_read_data;
+
+assign memory_access_address = (state[wait_instruction_bit] | state[fetch_instruction_bit]) ? program_counter : load_store_address; 
+
+assign memory_write_data[ 7: 0] = rs2[7:0];
+assign memory_write_data[15: 8] = load_store_address[0] ? rs2[7:0] : rs2[15:8];
+assign memory_write_data[23:16] = load_store_address[1] ? rs2[7:0] : rs2[23:16];
+assign memory_write_data[31:24] = load_store_address[0] ? rs2[7:0] : load_store_address[1] ? rs2[15:8] : rs2[31:24];
+
+wire [3:0] write_mask = 
+	memory_byte_access ? 
+		(load_store_address[1] ? (load_store_address[0] ? 4'b1000 : 4'b0100) :
+			(load_store_address[0] ? 4'b0010 : 4'b0001)
+		) :
+	memory_halfword_access ?
+		(load_store_address[1] ? 4'b1100 : 4'b0011) :
+		4'b1111;
+
+endmodule
+
+module next_pc(
+	input wire [31:0] program_counter
+);
+
+always @(posedge clk) begin
+	write_back_data = (jump_and_link_pc_operation || jump_and_link_register_operation) ? (program_counter + 4) : 
+		(load_upper_immediate_operation) ? Uimm :
+		(add_upper_immediate_pc_operation) ? (program_counter + Uimm) : 
+		alu_out;
 end
 
 endmodule
@@ -216,7 +259,7 @@ endmodule
 
 module register_file(
 	input wire clk,
-	input wire register_store,
+	input wire register_write,
 	input wire [4:0] read_register_1,
 	input wire [4:0] read_register_2,
 	input wire [4:0] write_register,
@@ -228,56 +271,12 @@ module register_file(
 reg [31:0] register_file [0:31];
 
 always @(posedge clk) begin
-	if (register_store) begin
+	if (register_write) begin
 		register_file[write_register] <= register_write_data;
 	end 
 end
 
 assign read_data_1 = register_file[read_register_1]; 
 assign read_data_2 = register_file[read_register_2]; 
-
-endmodule
-
-module waverv_core ();
-
-	wire [31:0] pc_plus_4 = program_counter + 4;
-	wire [31:0] pc_plus_immediate = program_counter + ( 
-	jump_and_link_pc_operation ? Jimm :
-	add_upper_immediate_pc_operation ? Uimm : 
-	Bimm );
-
-	wire [31:0] load_store_address = rs1 + (
-	store_operation ? Simm :
-	Iimm );
-
-	wire [15:0] load_halfword = load_store_address[1] ? memory_read_data[31:16] : memory_read_data[15:0];
-
-	wire [7:0] load_byte = load_store_address[0] ? load_halfword[15:8] : load_halfword[7:0];
-
-	wire memory_byte_access = funct3[1:0] == 2'b00;
-	wire memory_halfword_access = funct3[1:0] == 2'b01;
-
-	wire load_sign = !funct3[2] & (memory_byte_access ? load_byte[7] : load_halfword[15]);
-
-	wire [31:0] load_data = 
-		memory_byte_access ? {{24{load_sign}}, load_byte} :
-		memory_halfword_access ? {{16{load_sign}}, load_halfword} :
-		memory_read_data;
- 
-	assign memory_access_address = (state[wait_instruction_bit] | state[fetch_instruction_bit]) ? program_counter : load_store_address; 
-
-	assign memory_write_data[ 7: 0] = rs2[7:0];
-	assign memory_write_data[15: 8] = load_store_address[0] ? rs2[7:0] : rs2[15:8];
-	assign memory_write_data[23:16] = load_store_address[1] ? rs2[7:0] : rs2[23:16];
-	assign memory_write_data[31:24] = load_store_address[0] ? rs2[7:0] : load_store_address[1] ? rs2[15:8] : rs2[31:24];
-
-	wire [3:0] write_mask = 
-		memory_byte_access ? 
-			(load_store_address[1] ? (load_store_address[0] ? 4'b1000 : 4'b0100) :
-				(load_store_address[0] ? 4'b0010 : 4'b0001)
-			) :
-		memory_halfword_access ?
-			(load_store_address[1] ? 4'b1100 : 4'b0011) :
-			4'b1111;
 
 endmodule
